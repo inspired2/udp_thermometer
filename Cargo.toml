@@ -1,0 +1,13 @@
+[package]
+name = "udp_thermometer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "transmitter"
+path = "./src/transmitter.rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = {features = ["full"], version = "1"}
+smart_house = {path = "../smart-house-lib"}
