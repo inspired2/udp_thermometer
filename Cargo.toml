@@ -10,4 +10,5 @@ path = "./src/transmitter.rs"
 
 [dependencies]
 tokio = {features = ["full"], version = "1"}
-smart_house = {path = "../smart-house-lib"}
+smart-house = {git = "https://github.com/inspired2/smart-house.git"}
+rand = "*"
