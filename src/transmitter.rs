@@ -4,6 +4,7 @@ use std::thread;
 use std::time::Duration;
 use rand::*;
 
+//const TEMPERATURE_FORMAT: u8 = TempFormat::Fahrenheit u8;
 
 const TEMPERATURE_FORMAT: u8 = TempFormat::Celsius as u8;
 fn main() {

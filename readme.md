@@ -11,8 +11,8 @@ runs thermometer that receives temperature data from udp socket
 
 # Testing: 
 
--run main first to open socket connection: 
-cargo run --bin main
+-run main first: 
+cargo run --bin udp_thermometer
 
 -run transmitter:
 cargo run --bin transmitter
