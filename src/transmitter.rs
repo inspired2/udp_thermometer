@@ -1,34 +1,39 @@
 use rand::*;
 use std::mem::MaybeUninit;
-use std::thread;
 use std::time::Duration;
-
-use tokio::net::UdpSocket;
+use udp_thermometer::*;
 
 //const TEMPERATURE_FORMAT: u8 = TempFormat::Fahrenheit u8;
-
+const PACKET_LEN: usize = 5;
 const TEMPERATURE_FORMAT: u8 = TempFormat::Celsius as u8;
 #[tokio::main]
 async fn main() {
-    let addr = "127.0.0.1:8081";
-    let sock = UdpSocket::bind(addr).await.unwrap();
-    sock.connect("127.0.0.1:8080").await
-        .expect("can't connect to receiver");
+    let local = "127.0.0.1:8081";
+    let dest = "127.0.0.1:8080";
+
+    let mut connection = ThermConnectionBuilder::new()
+        .with_local_addr(local)
+        .await
+        .connect_to_peer(dest)
+        .await
+        .build::<PACKET_LEN>();
 
     let mut temperature_gen = TemperatureGenerator::new();
-    
+
     loop {
         let current_temp = temperature_gen.get_current();
-        //SAFETY:
-        // f32 is always 4 bytes
+
         let temp_data: [u8; 4] = current_temp.to_ne_bytes();
         let data: [u8; 5] = concat_helper([TEMPERATURE_FORMAT], temp_data);
-        sock.send(&data).await
+        connection
+            .send(data)
+            .await
             .expect("failed to send data from temperature transmitter");
 
-        thread::sleep(Duration::from_secs(1));
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
+
 struct TemperatureGenerator {
     current: f32,
     rng: rand::rngs::ThreadRng,

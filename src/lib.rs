@@ -1,42 +1,47 @@
-use tokio::{
-    net::{ToSocketAddrs, UdpSocket},
-    sync::Mutex,
-};
-use std::sync::Arc;
+mod udp_connection;
+
+use std::{net::SocketAddr, sync::Arc};
+use tokio::{net::ToSocketAddrs, sync::Mutex};
+pub use udp_connection::{ThermConnection, ThermConnectionBuilder};
+
 #[derive(Debug)]
 pub struct Thermometer {
     pub name: String,
     pub state: Arc<Mutex<Temperature>>,
 }
 
-
 impl Thermometer {
-    pub async fn new(name: &str, addr: impl ToSocketAddrs) -> Result<Self, String> {
+    pub async fn new<const N: usize>(
+        name: &str,
+        addr: impl ToSocketAddrs,
+        peer_addr: SocketAddr,
+    ) -> Result<Self, String> {
         let state = Arc::new(Mutex::new(Temperature::default()));
-        let socket = UdpSocket::bind(addr).await
-            .map_err(|e| e.to_string())?;
-            let cloned_state = Arc::clone(&state);
+        let mut connection: ThermConnection<N> = ThermConnectionBuilder::new()
+            .with_local_addr(addr)
+            .await
+            .build::<N>();
+        let cloned_state = Arc::clone(&state);
+
         tokio::spawn(async move {
-            let mut buf = [0_u8; 5];
-            while socket.recv(&mut buf).await.is_ok() {
-                println!("received data from temperature broadcaster: {:?}", &buf);
+            loop {
+                println!("enter Loop");
+                let mut buf = [0_u8; N];
+                let res = connection.recv_from(&mut buf, peer_addr).await;
+                println!("received: {:?}", res);
                 let new_temp = Temperature::from(buf);
-                let mut temp = cloned_state
-                    .lock()
-                    .await;
+                let mut temp = cloned_state.lock().await;
                 *temp = new_temp;
             }
         });
+
         Ok(Self {
             name: name.to_owned(),
             state,
         })
     }
     pub async fn get_temperature(&self) -> Result<Temperature, String> {
-        let temperature_ref = self
-            .state
-            .lock()
-            .await;
+        let temperature_ref = self.state.lock().await;
         Ok(*temperature_ref)
     }
     pub async fn get_celsius(&self) -> Result<i16, String> {
@@ -58,8 +63,8 @@ impl Default for Temperature {
         Self::Celsius(f32::default())
     }
 }
-impl From<[u8; 5]> for Temperature {
-    fn from(mut arr: [u8; 5]) -> Self {
+impl<const N: usize> From<[u8; N]> for Temperature {
+    fn from(mut arr: [u8; N]) -> Self {
         let temp_kind = arr[0];
         let data = unsafe {
             let ptr = arr.as_mut_ptr().add(1);

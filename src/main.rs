@@ -1,13 +1,16 @@
-use std::net::Ipv4Addr;
+use std::net::ToSocketAddrs;
 
-use udp_thermometer::Thermometer;
 use tokio::time::sleep;
+use udp_thermometer::Thermometer;
 
+const PACKET_LEN: usize = 5;
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    let addr = "127.0.0.1".parse::<Ipv4Addr>().map_err(|e| e.to_string())?;
-    let port: u16  = 8080;
-    let therm = Thermometer::new("therm", (addr, port)).await?;
+    let addr = "127.0.0.1:8080";
+    let peer = "127.0.0.1:8081".to_socket_addrs().unwrap().next().unwrap();
+
+    let therm = Thermometer::new::<PACKET_LEN>("therm", addr, peer).await?;
+    println!("Created thermometer: {:?}", therm);
     loop {
         println!("Current temperature: {:?}", therm.get_temperature().await?);
         sleep(std::time::Duration::from_secs(2)).await;
