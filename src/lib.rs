@@ -1,38 +1,29 @@
-use std::{
+use tokio::{
     net::{ToSocketAddrs, UdpSocket},
-    sync::{Arc, Mutex},
+    sync::Mutex,
 };
-
+use std::sync::Arc;
 #[derive(Debug)]
 pub struct Thermometer {
     pub name: String,
     pub state: Arc<Mutex<Temperature>>,
-    //socket: UdpSocket
 }
-// enum TemperatureFormat {
-//     Fahrenheit,
-//     Celsius
-// }
+
 
 impl Thermometer {
-    pub fn new(name: &str, addr: impl ToSocketAddrs) -> Result<Self, String> {
+    pub async fn new(name: &str, addr: impl ToSocketAddrs) -> Result<Self, String> {
         let state = Arc::new(Mutex::new(Temperature::default()));
-        let addr = addr
-            .to_socket_addrs()
-            .map_err(|_| "unable to parse provided socket addr".to_string())?
-            .next()
-            .ok_or_else(|| "ToSocketAddrs iterator is empty".to_owned())?;
-        let socket = UdpSocket::bind(addr)
-            .map_err(|_| format!("unable to connect to socket addr: {}", addr))?;
-        let cloned_state = Arc::clone(&state);
-        std::thread::spawn(move || {
+        let socket = UdpSocket::bind(addr).await
+            .map_err(|e| e.to_string())?;
+            let cloned_state = Arc::clone(&state);
+        tokio::spawn(async move {
             let mut buf = [0_u8; 5];
-            while socket.recv(&mut buf).is_ok() {
+            while socket.recv(&mut buf).await.is_ok() {
                 println!("received data from temperature broadcaster: {:?}", &buf);
                 let new_temp = Temperature::from(buf);
                 let mut temp = cloned_state
                     .lock()
-                    .expect("unable to acquire mutex lock on Thermometer.state");
+                    .await;
                 *temp = new_temp;
             }
         });
@@ -41,19 +32,19 @@ impl Thermometer {
             state,
         })
     }
-    pub fn get_temperature(&self) -> Result<Temperature, String> {
+    pub async fn get_temperature(&self) -> Result<Temperature, String> {
         let temperature_ref = self
             .state
             .lock()
-            .map_err(|_| "unable to acquire mutex lock on Thermometer.state".to_string())?;
+            .await;
         Ok(*temperature_ref)
     }
-    pub fn get_celsius(&self) -> Result<i16, String> {
-        Ok(self.get_temperature()?.as_celsius())
+    pub async fn get_celsius(&self) -> Result<i16, String> {
+        Ok(self.get_temperature().await?.as_celsius())
     }
 
-    pub fn get_fahrenheit(&self) -> Result<i16, String> {
-        Ok(self.get_temperature()?.as_fahrenheit())
+    pub async fn get_fahrenheit(&self) -> Result<i16, String> {
+        Ok(self.get_temperature().await?.as_fahrenheit())
     }
 }
 
