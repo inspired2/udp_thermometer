@@ -1,7 +1,7 @@
 mod udp_connection;
 
 use std::{net::SocketAddr, sync::Arc};
-use tokio::{net::ToSocketAddrs, sync::Mutex};
+use tokio::sync::Mutex;
 pub use udp_connection::{ThermConnection, ThermConnectionBuilder};
 
 #[derive(Debug)]
@@ -13,7 +13,7 @@ pub struct Thermometer {
 impl Thermometer {
     pub async fn new<const N: usize>(
         name: &str,
-        addr: impl ToSocketAddrs,
+        addr: SocketAddr,
         peer_addr: SocketAddr,
     ) -> Result<Self, String> {
         let state = Arc::new(Mutex::new(Temperature::default()));

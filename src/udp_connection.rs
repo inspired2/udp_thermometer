@@ -13,14 +13,13 @@ impl ThermConnectionBuilder {
     }
 
     pub async fn with_local_addr(mut self, addr: impl ToSocketAddrs) -> Self {
-        let socket;
-        if let Ok(s) = UdpSocket::bind(addr).await {
-            socket = s;
+        let socket = if let Ok(s) = UdpSocket::bind(addr).await {
+            s
         } else {
-            socket = UdpSocket::bind("127.0.0.1:0")
+            UdpSocket::bind("127.0.0.1:0")
                 .await
-                .expect("Cannot find free local port to bind UdpSocket to");
-        }
+                .expect("Cannot find free local port to bind UdpSocket to")
+        };
         self.local_addr = Some(
             socket
                 .local_addr()
