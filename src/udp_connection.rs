@@ -53,8 +53,6 @@ impl ThermConnectionBuilder {
     }
 }
 pub struct ThermConnection<const N: usize> {
-    // local_addr: SocketAddr,
-    // dest_addr: Option<SocketAddr>,
     socket: UdpSocket,
 }
 impl<const N: usize> ThermConnection<N> {
